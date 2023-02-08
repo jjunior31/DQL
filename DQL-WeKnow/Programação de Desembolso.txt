@@ -1,0 +1,34 @@
+SELECT con_pag.nr_documento
+      ,fornecedor.cd_fornecedor
+      ,fornecedor.cd_fornecedor||' - '||fornecedor.nm_fornecedor fornecedor
+      ,item_res.cd_item_res
+      ,item_res.cd_item_res||' - '||item_res.ds_item_res conta_custo
+      ,Decode(itcon_pag.tp_quitacao,'Q','Quitado','C','Comprometido','P','Parcilmente Pago','T','Liquidação Total Devolutiva','L','Liquidacao Parcial','V','Previsto') status
+      ,To_Date(con_pag.dt_emissao,'dd/mm/yyyy') dt_emissao
+      ,To_Date(con_pag.dt_lancamento,'dd/mm/yyyy')dt_lancamento
+      ,To_Date(itcon_pag.dt_vencimento,'dd/mm/yyyy') dt_vencimento
+      ,itcon_pag.vl_duplicata
+      ,con_pag.cd_multi_empresa
+      ,:cd_meta
+
+  FROM dbamv.con_pag
+  INNER JOIN dbamv.itcon_pag ON con_pag.cd_con_pag = itcon_pag.cd_con_pag
+  INNER JOIN dbamv.fornecedor ON con_pag.cd_fornecedor = fornecedor.cd_fornecedor
+  left  JOIN dbamv.pagcon_pag ON itcon_pag.cd_itcon_pag = pagcon_pag.cd_itcon_pag
+  left  JOIN dbamv.ratcon_pag ON con_pag.cd_con_pag = ratcon_pag.cd_con_pag
+  left  JOIN dbamv.item_res ON ratcon_pag.cd_item_res = item_res.cd_item_res
+ WHERE itcon_pag.dt_vencimento BETWEEN :ini AND To_Date(:fin)  and item_res.tp_item_res = 'C'
+
+GROUP BY con_pag.nr_documento
+        ,fornecedor.cd_fornecedor
+        ,fornecedor.nm_fornecedor
+        ,con_pag.cd_multi_empresa
+        ,item_res.cd_item_res
+        ,item_res.ds_item_res
+        ,Decode(itcon_pag.tp_quitacao,'Q','Quitado','C','Comprometido','P','Parcilmente Pago','T','Liquidação Total Devolutiva','L','Liquidacao Parcial','V','Previsto')
+        ,To_Date(con_pag.dt_emissao,'dd/mm/yyyy')
+        ,To_Date(con_pag.dt_lancamento,'dd/mm/yyyy')
+        ,To_Date(itcon_pag.dt_vencimento,'dd/mm/yyyy')
+        ,itcon_pag.vl_duplicata
+
+ORDER BY 1 ASC
