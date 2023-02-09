@@ -6,3 +6,5 @@ SELECT coluna1, coluna2, ...,
            ELSE 'igual'
        END AS tipo
 FROM nome_da_tabela;
+
+https://chat.openai.com/chat
