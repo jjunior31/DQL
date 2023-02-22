@@ -1,0 +1,86 @@
+SELECT 
+    up."Component",
+    up."YearMonth",
+    up."Uptime",
+    LTM."LTM",
+    YTD."YTD",
+    up."LifeHours",
+    rea."Reading"
+FROM (
+    SELECT 
+        "Component",
+        "YearMonth",
+        SUM("Uptime") AS "Uptime",
+        COALESCE("LifeHours", 0) AS "LifeHours"
+    FROM (
+        SELECT 
+            ae."Component",
+            to_char("TakenDate", 'yyyy-mm') AS "YearMonth",
+            COALESCE(ae."Reading" - LAG(ae."Reading") OVER (PARTITION BY ae."Component" ORDER BY ae."Component", ae."TakenDate"), 0) AS "Uptime",
+            aea."LifeHours"
+        FROM 
+            maintenance."ApiEmaintMeters" AS ae
+        JOIN 
+            maintenance."ApiEmaintAssets" aea ON ae."Component" = aea."Component"
+        WHERE 
+            "TakenDate" BETWEEN date_trunc('month', current_date-365) AND date_trunc('month', current_date) - INTERVAL '1 day'
+    ) t
+    GROUP BY 
+        "Component",
+        "YearMonth",
+        "LifeHours"
+) AS up
+JOIN (
+    SELECT 
+        "Component",
+        SUM("LTM") AS "LTM"
+    FROM (
+        SELECT 
+            ae."Component",
+            to_char("TakenDate", 'yyyy-mm') AS "YearMonth",
+            COALESCE(ae."Reading" - LAG(ae."Reading") OVER (PARTITION BY ae."Component" ORDER BY ae."Component", ae."TakenDate"), 0) AS "LTM"
+        FROM 
+            maintenance."ApiEmaintMeters" AS ae
+        WHERE 
+            "TakenDate" BETWEEN date_trunc('month', current_date-365) AND date_trunc('month', current_date) - INTERVAL '1 day'
+    ) t
+    GROUP BY 
+        "Component"
+) AS LTM ON up."Component" = LTM."Component"
+JOIN (
+    SELECT 
+        "Component",
+        SUM("YTD") AS "YTD"
+    FROM (
+        SELECT 
+            ae."Component",
+            to_char("TakenDate", 'yyyy-mm') AS "YearMonth",
+            COALESCE(ae."Reading" - LAG(ae."Reading") OVER (PARTITION BY ae."Component" ORDER BY ae."Component", ae."TakenDate"), 0) AS "YTD"
+        FROM 
+            maintenance."ApiEmaintMeters" AS ae
+        WHERE 
+            "TakenDate" BETWEEN date_trunc('month', current_date) - INTERVAL '1 Month' AND current_date
+    ) t
+    GROUP BY 
+        "Component"
+) AS YTD ON LTM."Component" = YTD."Component"
+JOIN (
+    SELECT 
+        "Component",
+        MAX("Reading") AS "Reading"
+    FROM 
+        maintenance."ApiEmaintMeters" aem
+    GROUP BY 
+        "Component" 
+) AS rea ON LTM."Component" = rea."Component"
+GROUP BY 
+    up."Component",
+    LTM."LTM",
+    up."YearMonth",
+    up."Uptime",
+    YTD."YTD",
+    up."LifeHours",
+    rea."Reading"
+ORDER BY 
+    1 ASC,
+    2 ASC
